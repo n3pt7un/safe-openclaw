@@ -3,12 +3,30 @@
 - Repo: https://github.com/openclaw/openclaw
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
 
+## Architecture Overview
+
+OpenClaw is a multi-channel messaging gateway and AI agent platform. The system connects messaging channels (WhatsApp, Telegram, Discord, Slack, Signal, iMessage, LINE, and ~20 more via plugins) to AI agents through a WebSocket-based gateway server. It ships as a CLI (`openclaw`), a macOS menubar app, and iOS/Android companion apps.
+
+**Key subsystems:**
+- **Gateway** (`src/gateway/`): WebSocket server handling client connections, RPC method invocation, auth, session management, hooks, and plugin loading.
+- **Channels** (`src/channels/`, `src/telegram/`, `src/discord/`, etc.): Adapters for each messaging platform with routing, allowlists, command gating, and mention gating.
+- **Agent system** (`src/agents/`): Multi-stage AI agent orchestration with tool definitions, bash tools, model scanning, sandbox support, and Pi agent integration.
+- **CLI** (`src/cli/`, `src/commands/`): ~40 commands wired via Commander.
+- **Plugin SDK** (`src/plugin-sdk/`, `src/plugins/`): Dynamic plugin discovery, loading, registry, and lifecycle hooks.
+- **Media pipeline** (`src/media/`, `src/media-understanding/`, `src/link-understanding/`): Image/video/link processing and analysis.
+- **Mobile & desktop apps** (`apps/`): Swift (iOS/macOS) and Kotlin (Android) native apps communicating with the gateway.
+
 ## Project Structure & Module Organization
 
-- Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
+- Source code: `src/` (~52 directories, ~307k LOC TypeScript). Key areas: CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`.
+- Skills: `skills/` (~54 agent skills).
+- UI: `ui/` (control panel UI built with Lit/Vite).
+- Workspace packages: `packages/clawdbot` and `packages/moltbot`.
+- Apps: `apps/ios/`, `apps/macos/`, `apps/android/`, `apps/shared/OpenClawKit/`.
 - Tests: colocated `*.test.ts`.
-- Docs: `docs/` (images, queue, Pi config). Built output lives in `dist/`.
-- Plugins/extensions: live under `extensions/*` (workspace packages). Keep plugin-only deps in the extension `package.json`; do not add them to the root `package.json` unless core uses them.
+- Docs: `docs/` (~28 directories, Mintlify-hosted). Built output lives in `dist/`.
+- Vendor: `vendor/` (vendored dependencies). Patches: `patches/` (pnpm patch files).
+- Plugins/extensions: live under `extensions/*` (~32 workspace packages). Keep plugin-only deps in the extension `package.json`; do not add them to the root `package.json` unless core uses them.
 - Plugins: install runs `npm install --omit=dev` in plugin dir; runtime deps must live in `dependencies`. Avoid `workspace:*` in `dependencies` (npm install breaks); put `openclaw` in `devDependencies` or `peerDependencies` instead (runtime resolves `openclaw/plugin-sdk` via jiti alias).
 - Installers served from `https://openclaw.ai/*`: live in the sibling repo `../openclaw.ai` (`public/install.sh`, `public/install-cli.sh`, `public/install.ps1`).
 - Messaging channels: always consider **all** built-in + extension channels when refactoring shared logic (routing, allowlists, pairing, command gating, onboarding, docs).
@@ -41,7 +59,9 @@
 
 ## Build, Test, and Development Commands
 
+- Package manager: **pnpm 10.23.0**. Workspace monorepo (root + extensions + packages).
 - Runtime baseline: Node **22+** (keep Node + Bun paths working).
+- Key dependencies: Baileys (WhatsApp), discord.js, @slack/bolt, grammy (Telegram), Hono (HTTP), Commander (CLI), Vitest (testing), Oxlint/Oxfmt (lint/format), sharp (images), Playwright (browser), @mariozechner/pi-* (agent framework).
 - Install deps: `pnpm install`
 - Pre-commit hooks: `prek install` (runs same checks as CI)
 - Also supported: `bun install` (keep `pnpm-lock.yaml` + Bun patching in sync when touching deps/patches).
